@@ -68,7 +68,7 @@
       width: min(92vw, 540px);
       display: grid;
       justify-items: center;
-      gap: 16px;
+      gap: 14px;
       text-align: center;
     }
 
@@ -121,6 +121,23 @@
       min-width: 0;
       font-size: clamp(1rem, 4vw, 1.25rem);
       overflow-wrap: anywhere;
+    }
+
+    .sound-btn {
+      min-width: 128px;
+      min-height: 42px;
+      border: 0;
+      border-radius: 999px;
+      color: #24425a;
+      background: #fff7d6;
+      box-shadow: 0 6px 0 rgba(36, 66, 90, 0.16);
+      font: 1000 1rem "Trebuchet MS", system-ui, sans-serif;
+      cursor: pointer;
+    }
+
+    .sound-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(36, 66, 90, 0.16);
     }
 
     .health-area {
@@ -279,7 +296,7 @@
       justify-content: center;
       padding: 24px;
       background: rgba(36, 66, 90, 0.35);
-      backdrop-filter: blur(3px);
+      backdrop-filter: blur(4px);
     }
 
     .overlay.show {
@@ -401,6 +418,8 @@
         <div class="target-text" id="targetText">本次目標：APPLE (蘋果)</div>
       </div>
 
+      <button class="sound-btn" id="soundButton" type="button">🔊 聽發音</button>
+
       <div class="health-area" aria-live="polite">
         <div class="health-label">
           <span>Monster HP</span>
@@ -424,9 +443,9 @@
   <div class="overlay" id="quizOverlay" role="dialog" aria-modal="true" aria-labelledby="quizTitle">
     <form class="dialog" id="quizForm">
       <h2 id="quizTitle">拼字挑戰</h2>
-      <p id="quizPrompt">請輸入完整的單字：APPLE</p>
+      <p id="quizPrompt">請輸入這個中文的英文：蘋果</p>
       <div class="answer-row">
-        <input id="answerInput" type="text" autocomplete="off" inputmode="latin" maxlength="20" aria-label="請輸入完整單字">
+        <input id="answerInput" type="text" autocomplete="off" inputmode="latin" maxlength="20" aria-label="請輸入英文單字">
         <button class="btn" type="submit">送出</button>
       </div>
     </form>
@@ -460,6 +479,7 @@
     const monsterIcon = document.getElementById("monsterIcon");
     const targetIcon = document.getElementById("targetIcon");
     const targetText = document.getElementById("targetText");
+    const soundButton = document.getElementById("soundButton");
     const healthFill = document.getElementById("healthFill");
     const hpText = document.getElementById("hpText");
     const message = document.getElementById("message");
@@ -490,6 +510,20 @@
       return normalizeWord(currentWord.word);
     }
 
+    function speakCurrentWord() {
+      if (!("speechSynthesis" in window) || !currentWord) {
+        message.textContent = "這個瀏覽器暫時不支援發音。";
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(currentWord.word);
+      utterance.lang = "en-US";
+      utterance.rate = 0.78;
+      utterance.pitch = 1.1;
+      window.speechSynthesis.speak(utterance);
+    }
+
     function renderCurrentWord() {
       const wordText = getCurrentWordText();
       const image = currentWord.imageUrl || "🎁";
@@ -497,7 +531,7 @@
       targetIcon.textContent = image;
       monsterIcon.textContent = image;
       targetText.textContent = `本次目標：${wordText} (${currentWord.translation})`;
-      quizPrompt.textContent = `請輸入完整的單字：${wordText}`;
+      quizPrompt.textContent = `請輸入這個中文的英文：${currentWord.translation}`;
       winMessage.textContent = `太棒了，你獲得 ${wordText} (${currentWord.translation}) 了！`;
     }
 
@@ -536,7 +570,7 @@
     function showQuiz() {
       setPaused(true);
       quizOverlay.classList.add("show");
-      message.textContent = `拼對 ${getCurrentWordText()} 就能繼續！`;
+      message.textContent = `看中文，拼出英文單字！`;
       answerInput.value = "";
       window.setTimeout(() => answerInput.focus(), 50);
     }
@@ -549,6 +583,7 @@
     function showWin() {
       hasWon = true;
       setPaused(true);
+      speakCurrentWord();
       message.textContent = "You Win!";
       winOverlay.classList.add("show");
     }
@@ -560,6 +595,7 @@
       monster.classList.add("hit");
       window.setTimeout(() => monster.classList.remove("hit"), 140);
       showWordEffect();
+      speakCurrentWord();
       updateHealth();
 
       if (hp === 0) {
@@ -576,11 +612,14 @@
       message.textContent = `Great! ${getCurrentWordText()}!`;
     });
 
+    soundButton.addEventListener("click", speakCurrentWord);
+
     quizForm.addEventListener("submit", (event) => {
       event.preventDefault();
       const answer = normalizeWord(answerInput.value);
 
       if (answer === getCurrentWordText()) {
+        speakCurrentWord();
         message.textContent = "Correct! 繼續點擊！";
       } else {
         hp = WRONG_HP;
@@ -591,7 +630,10 @@
       hideQuiz();
     });
 
-    restartButton.addEventListener("click", startNewRound);
+    restartButton.addEventListener("click", () => {
+      startNewRound();
+      speakCurrentWord();
+    });
 
     startNewRound();
   </script>
